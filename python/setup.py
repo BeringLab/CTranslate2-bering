@@ -8,8 +8,11 @@ from pybind11.setup_helpers import ParallelCompile
 from setuptools import Extension, find_packages, setup
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-include_dirs = [pybind11.get_include()]
-library_dirs = []
+# include_dirs = [pybind11.get_include()]
+# library_dirs = []
+
+include_dirs = [pybind11.get_include(), "/usr/local/include/ctranslate2"]
+library_dirs = ["/usr/local/lib"]
 
 
 def _get_long_description():
