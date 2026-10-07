@@ -4,18 +4,22 @@
 
 #include "replica_pool.h"
 
-namespace ctranslate2 {
-  namespace python {
+namespace ctranslate2
+{
+  namespace python
+  {
 
     using BatchTokensOptional = std::optional<std::vector<std::optional<Tokens>>>;
 
-    static BatchTokens finalize_optional_batch(const BatchTokensOptional& optional) {
+    static BatchTokens finalize_optional_batch(const BatchTokensOptional &optional)
+    {
       // Convert missing values to empty vectors.
       BatchTokens batch;
       if (!optional)
         return batch;
       batch.reserve(optional->size());
-      for (const auto& tokens : *optional) {
+      for (const auto &tokens : *optional)
+      {
         batch.emplace_back(tokens.value_or(Tokens()));
       }
       return batch;
@@ -26,16 +30,16 @@ namespace ctranslate2 {
     public:
       using ReplicaPoolHelper::ReplicaPoolHelper;
 
-      using TokenizeFn = std::function<std::vector<std::string>(const std::string&)>;
-      using DetokenizeFn = std::function<std::string(const std::vector<std::string>&)>;
+      using TokenizeFn = std::function<std::vector<std::string>(const std::string &)>;
+      using DetokenizeFn = std::function<std::string(const std::vector<std::string> &)>;
 
       ExecutionStats
-      translate_file(const std::string& source_path,
-                     const std::string& output_path,
-                     const std::optional<std::string>& target_path,
+      translate_file(const std::string &source_path,
+                     const std::string &output_path,
+                     const std::optional<std::string> &target_path,
                      size_t max_batch_size,
                      size_t read_batch_size,
-                     const std::string& batch_type_str,
+                     const std::string &batch_type_str,
                      size_t beam_size,
                      float patience,
                      size_t num_hypotheses,
@@ -44,8 +48,8 @@ namespace ctranslate2 {
                      float repetition_penalty,
                      size_t no_repeat_ngram_size,
                      bool disable_unk,
-                     const std::optional<std::vector<std::vector<std::string>>>& suppress_sequences,
-                     const std::optional<EndToken>& end_token,
+                     const std::optional<std::vector<std::vector<std::string>>> &suppress_sequences,
+                     const std::optional<EndToken> &end_token,
                      float prefix_bias_beta,
                      size_t max_input_length,
                      size_t max_decoding_length,
@@ -56,12 +60,13 @@ namespace ctranslate2 {
                      float sampling_topp,
                      float sampling_temperature,
                      bool replace_unknowns,
-                     const TokenizeFn& source_tokenize_fn,
-                     const TokenizeFn& target_tokenize_fn,
-                     const DetokenizeFn& target_detokenize_fn) {
+                     const TokenizeFn &source_tokenize_fn,
+                     const TokenizeFn &target_tokenize_fn,
+                     const DetokenizeFn &target_detokenize_fn)
+      {
         if (bool(source_tokenize_fn) != bool(target_detokenize_fn))
           throw std::invalid_argument("source_tokenize_fn and target_detokenize_fn should both be set or none at all");
-        const std::string* target_path_ptr = target_path ? &target_path.value() : nullptr;
+        const std::string *target_path_ptr = target_path ? &target_path.value() : nullptr;
         if (target_path_ptr && source_tokenize_fn && !target_tokenize_fn)
           throw std::invalid_argument("target_tokenize_fn should be set when passing a target file");
 
@@ -93,7 +98,8 @@ namespace ctranslate2 {
         std::shared_lock lock(_mutex);
         assert_model_is_ready();
 
-        if (source_tokenize_fn && target_detokenize_fn) {
+        if (source_tokenize_fn && target_detokenize_fn)
+        {
           return _pool->translate_raw_text_file(source_path,
                                                 target_path_ptr,
                                                 output_path,
@@ -105,7 +111,9 @@ namespace ctranslate2 {
                                                 read_batch_size,
                                                 batch_type,
                                                 with_scores);
-        } else {
+        }
+        else
+        {
           return _pool->translate_text_file(source_path,
                                             output_path,
                                             options,
@@ -119,10 +127,10 @@ namespace ctranslate2 {
 
       std::variant<std::vector<TranslationResult>,
                    std::vector<AsyncResult<TranslationResult>>>
-      translate_batch(const BatchTokens& source,
-                      const BatchTokensOptional& target_prefix,
+      translate_batch(const BatchTokens &source,
+                      const BatchTokensOptional &target_prefix,
                       size_t max_batch_size,
-                      const std::string& batch_type_str,
+                      const std::string &batch_type_str,
                       bool asynchronous,
                       size_t beam_size,
                       float patience,
@@ -132,8 +140,8 @@ namespace ctranslate2 {
                       float repetition_penalty,
                       size_t no_repeat_ngram_size,
                       bool disable_unk,
-                      const std::optional<std::vector<std::vector<std::string>>>& suppress_sequences,
-                      const std::optional<EndToken>& end_token,
+                      const std::optional<std::vector<std::vector<std::string>>> &suppress_sequences,
+                      const std::optional<EndToken> &end_token,
                       bool return_end_token,
                       float prefix_bias_beta,
                       size_t max_input_length,
@@ -149,7 +157,8 @@ namespace ctranslate2 {
                       float sampling_topp,
                       float sampling_temperature,
                       bool replace_unknowns,
-                      std::function<bool(GenerationStepResult)> callback) {
+                      std::function<bool(GenerationStepResult)> callback)
+      {
         if (source.empty())
           return {};
 
@@ -198,13 +207,14 @@ namespace ctranslate2 {
 
       std::variant<std::vector<ScoringResult>,
                    std::vector<AsyncResult<ScoringResult>>>
-      score_batch(const BatchTokens& source,
-                  const BatchTokens& target,
+      score_batch(const BatchTokens &source,
+                  const BatchTokens &target,
                   size_t max_batch_size,
-                  const std::string& batch_type_str,
+                  const std::string &batch_type_str,
                   size_t max_input_length,
                   dim_t offset,
-                  bool asynchronous) {
+                  bool asynchronous)
+      {
         const auto batch_type = str_to_batch_type(batch_type_str);
         ScoringOptions options;
         options.max_input_length = max_input_length;
@@ -222,20 +232,20 @@ namespace ctranslate2 {
         return maybe_wait_on_futures(std::move(futures), asynchronous);
       }
 
-      ExecutionStats score_file(const std::string& source_path,
-                                const std::string& target_path,
-                                const std::string& output_path,
+      ExecutionStats score_file(const std::string &source_path,
+                                const std::string &target_path,
+                                const std::string &output_path,
                                 size_t max_batch_size,
                                 size_t read_batch_size,
-                                const std::string& batch_type_str,
+                                const std::string &batch_type_str,
                                 size_t max_input_length,
                                 dim_t offset,
                                 bool with_tokens_score,
-                                const TokenizeFn& source_tokenize_fn,
-                                const TokenizeFn& target_tokenize_fn,
-                                const DetokenizeFn& target_detokenize_fn) {
-        if (bool(source_tokenize_fn) != bool(target_tokenize_fn)
-            || bool(target_tokenize_fn) != bool(target_detokenize_fn))
+                                const TokenizeFn &source_tokenize_fn,
+                                const TokenizeFn &target_tokenize_fn,
+                                const DetokenizeFn &target_detokenize_fn)
+      {
+        if (bool(source_tokenize_fn) != bool(target_tokenize_fn) || bool(target_tokenize_fn) != bool(target_detokenize_fn))
           throw std::invalid_argument("source_tokenize_fn, target_tokenize_fn, and target_detokenize_fn should all be set or none at all");
 
         const auto batch_type = str_to_batch_type(batch_type_str);
@@ -245,7 +255,8 @@ namespace ctranslate2 {
         std::shared_lock lock(_mutex);
         assert_model_is_ready();
 
-        if (source_tokenize_fn) {
+        if (source_tokenize_fn)
+        {
           return _pool->score_raw_text_file(source_path,
                                             target_path,
                                             output_path,
@@ -257,7 +268,9 @@ namespace ctranslate2 {
                                             read_batch_size,
                                             batch_type,
                                             with_tokens_score);
-        } else {
+        }
+        else
+        {
           return _pool->score_text_file(source_path,
                                         target_path,
                                         output_path,
@@ -270,11 +283,11 @@ namespace ctranslate2 {
       }
     };
 
-
-    void register_translator(py::module& m) {
+    void register_translator(py::module &m)
+    {
       py::class_<TranslatorWrapper>(
-        m, "Translator",
-        R"pbdoc(
+          m, "Translator",
+          R"pbdoc(
             A text translator.
 
             Example:
@@ -283,19 +296,19 @@ namespace ctranslate2 {
                 >>> translator.translate_batch([["▁Hello", "▁world", "!"]])
         )pbdoc")
 
-        .def(py::init<const std::string&, const std::string&, const std::variant<int, std::vector<int>>&, const StringOrMap&, size_t, size_t, long, bool, bool, py::object>(),
-             py::arg("model_path"),
-             py::arg("device")="cpu",
-             py::kw_only(),
-             py::arg("device_index")=0,
-             py::arg("compute_type")="default",
-             py::arg("inter_threads")=1,
-             py::arg("intra_threads")=0,
-             py::arg("max_queued_batches")=0,
-             py::arg("flash_attention")=false,
-             py::arg("tensor_parallel")=false,
-             py::arg("files")=py::none(),
-             R"pbdoc(
+          .def(py::init<const std::string &, const std::string &, const std::variant<int, std::vector<int>> &, const StringOrMap &, size_t, size_t, long, bool, bool, py::object>(),
+               py::arg("model_path"),
+               py::arg("device") = "cpu",
+               py::kw_only(),
+               py::arg("device_index") = 0,
+               py::arg("compute_type") = "default",
+               py::arg("inter_threads") = 1,
+               py::arg("intra_threads") = 0,
+               py::arg("max_queued_batches") = 0,
+               py::arg("flash_attention") = false,
+               py::arg("tensor_parallel") = false,
+               py::arg("files") = py::none(),
+               R"pbdoc(
                  Initializes the translator.
 
                  Arguments:
@@ -317,56 +330,56 @@ namespace ctranslate2 {
                      :obj:`model_path` acts as an identifier for this model.
              )pbdoc")
 
-        .def_property_readonly("device", &TranslatorWrapper::device,
-                               "Device this translator is running on.")
-        .def_property_readonly("device_index", &TranslatorWrapper::device_index,
-                               "List of device IDs where this translator is running on.")
-        .def_property_readonly("compute_type", &TranslatorWrapper::compute_type,
-                               "Computation type used by the model.")
-        .def_property_readonly("num_translators", &TranslatorWrapper::num_replicas,
-                               "Number of translators backing this instance.")
-        .def_property_readonly("num_queued_batches", &TranslatorWrapper::num_queued_batches,
-                               "Number of batches waiting to be processed.")
-        .def_property_readonly("tensor_parallel", &TranslatorWrapper::tensor_parallel,
-                               "Run model with tensor parallel mode.")
-        .def_property_readonly("num_active_batches", &TranslatorWrapper::num_active_batches,
-                               "Number of batches waiting to be processed or currently processed.")
+          .def_property_readonly("device", &TranslatorWrapper::device,
+                                 "Device this translator is running on.")
+          .def_property_readonly("device_index", &TranslatorWrapper::device_index,
+                                 "List of device IDs where this translator is running on.")
+          .def_property_readonly("compute_type", &TranslatorWrapper::compute_type,
+                                 "Computation type used by the model.")
+          .def_property_readonly("num_translators", &TranslatorWrapper::num_replicas,
+                                 "Number of translators backing this instance.")
+          .def_property_readonly("num_queued_batches", &TranslatorWrapper::num_queued_batches,
+                                 "Number of batches waiting to be processed.")
+          .def_property_readonly("tensor_parallel", &TranslatorWrapper::tensor_parallel,
+                                 "Run model with tensor parallel mode.")
+          .def_property_readonly("num_active_batches", &TranslatorWrapper::num_active_batches,
+                                 "Number of batches waiting to be processed or currently processed.")
 
-        .def("translate_batch", &TranslatorWrapper::translate_batch,
-             py::arg("source"),
-             py::arg("target_prefix")=py::none(),
-             py::kw_only(),
-             py::arg("max_batch_size")=0,
-             py::arg("batch_type")="examples",
-             py::arg("asynchronous")=false,
-             py::arg("beam_size")=2,
-             py::arg("patience")=1,
-             py::arg("num_hypotheses")=1,
-             py::arg("length_penalty")=1,
-             py::arg("coverage_penalty")=0,
-             py::arg("repetition_penalty")=1,
-             py::arg("no_repeat_ngram_size")=0,
-             py::arg("disable_unk")=false,
-             py::arg("suppress_sequences")=py::none(),
-             py::arg("end_token")=py::none(),
-             py::arg("return_end_token")=false,
-             py::arg("prefix_bias_beta")=0,
-             py::arg("max_input_length")=1024,
-             py::arg("max_decoding_length")=256,
-             py::arg("min_decoding_length")=1,
-             py::arg("use_vmap")=false,
-             py::arg("return_scores")=false,
-             py::arg("return_logits_vocab")=false,
-             py::arg("return_attention")=false,
-             py::arg("return_alternatives")=false,
-             py::arg("min_alternative_expansion_prob")=0,
-             py::arg("sampling_topk")=1,
-             py::arg("sampling_topp")=1,
-             py::arg("sampling_temperature")=1,
-             py::arg("replace_unknowns")=false,
-             py::arg("callback")=nullptr,
-             py::call_guard<py::gil_scoped_release>(),
-             R"pbdoc(
+          .def("translate_batch", &TranslatorWrapper::translate_batch,
+               py::arg("source"),
+               py::arg("target_prefix") = py::none(),
+               py::kw_only(),
+               py::arg("max_batch_size") = 0,
+               py::arg("batch_type") = "examples",
+               py::arg("asynchronous") = false,
+               py::arg("beam_size") = 2,
+               py::arg("patience") = 1,
+               py::arg("num_hypotheses") = 1,
+               py::arg("length_penalty") = 1,
+               py::arg("coverage_penalty") = 0,
+               py::arg("repetition_penalty") = 1,
+               py::arg("no_repeat_ngram_size") = 0,
+               py::arg("disable_unk") = false,
+               py::arg("suppress_sequences") = py::none(),
+               py::arg("end_token") = py::none(),
+               py::arg("return_end_token") = false,
+               py::arg("prefix_bias_beta") = 0,
+               py::arg("max_input_length") = 1024,
+               py::arg("max_decoding_length") = 256,
+               py::arg("min_decoding_length") = 1,
+               py::arg("use_vmap") = false,
+               py::arg("return_scores") = false,
+               py::arg("return_logits_vocab") = false,
+               py::arg("return_attention") = false,
+               py::arg("return_alternatives") = false,
+               py::arg("min_alternative_expansion_prob") = 0,
+               py::arg("sampling_topk") = 1,
+               py::arg("sampling_topp") = 1,
+               py::arg("sampling_temperature") = 1,
+               py::arg("replace_unknowns") = false,
+               py::arg("callback") = nullptr,
+               py::call_guard<py::gil_scoped_release>(),
+               R"pbdoc(
                  Translates a batch of tokens.
 
                  Arguments:
@@ -419,39 +432,39 @@ namespace ctranslate2 {
                    `TranslationOptions <https://github.com/OpenNMT/CTranslate2/blob/master/include/ctranslate2/translation.h>`_ structure in the C++ library.
              )pbdoc")
 
-        .def("translate_file", &TranslatorWrapper::translate_file,
-             py::arg("source_path"),
-             py::arg("output_path"),
-             py::arg("target_path")=py::none(),
-             py::kw_only(),
-             py::arg("max_batch_size")=32,
-             py::arg("read_batch_size")=0,
-             py::arg("batch_type")="examples",
-             py::arg("beam_size")=2,
-             py::arg("patience")=1,
-             py::arg("num_hypotheses")=1,
-             py::arg("length_penalty")=1,
-             py::arg("coverage_penalty")=0,
-             py::arg("repetition_penalty")=1,
-             py::arg("no_repeat_ngram_size")=0,
-             py::arg("disable_unk")=false,
-             py::arg("suppress_sequences")=py::none(),
-             py::arg("end_token")=py::none(),
-             py::arg("prefix_bias_beta")=0,
-             py::arg("max_input_length")=1024,
-             py::arg("max_decoding_length")=256,
-             py::arg("min_decoding_length")=1,
-             py::arg("use_vmap")=false,
-             py::arg("with_scores")=false,
-             py::arg("sampling_topk")=1,
-             py::arg("sampling_topp")=1,
-             py::arg("sampling_temperature")=1,
-             py::arg("replace_unknowns")=false,
-             py::arg("source_tokenize_fn")=nullptr,
-             py::arg("target_tokenize_fn")=nullptr,
-             py::arg("target_detokenize_fn")=nullptr,
-             py::call_guard<py::gil_scoped_release>(),
-             R"pbdoc(
+          .def("translate_file", &TranslatorWrapper::translate_file,
+               py::arg("source_path"),
+               py::arg("output_path"),
+               py::arg("target_path") = py::none(),
+               py::kw_only(),
+               py::arg("max_batch_size") = 32,
+               py::arg("read_batch_size") = 0,
+               py::arg("batch_type") = "examples",
+               py::arg("beam_size") = 2,
+               py::arg("patience") = 1,
+               py::arg("num_hypotheses") = 1,
+               py::arg("length_penalty") = 1,
+               py::arg("coverage_penalty") = 0,
+               py::arg("repetition_penalty") = 1,
+               py::arg("no_repeat_ngram_size") = 0,
+               py::arg("disable_unk") = false,
+               py::arg("suppress_sequences") = py::none(),
+               py::arg("end_token") = py::none(),
+               py::arg("prefix_bias_beta") = 0,
+               py::arg("max_input_length") = 1024,
+               py::arg("max_decoding_length") = 256,
+               py::arg("min_decoding_length") = 1,
+               py::arg("use_vmap") = false,
+               py::arg("with_scores") = false,
+               py::arg("sampling_topk") = 1,
+               py::arg("sampling_topp") = 1,
+               py::arg("sampling_temperature") = 1,
+               py::arg("replace_unknowns") = false,
+               py::arg("source_tokenize_fn") = nullptr,
+               py::arg("target_tokenize_fn") = nullptr,
+               py::arg("target_detokenize_fn") = nullptr,
+               py::call_guard<py::gil_scoped_release>(),
+               R"pbdoc(
                  Translates a tokenized text file.
 
                  Arguments:
@@ -501,17 +514,17 @@ namespace ctranslate2 {
                    `TranslationOptions <https://github.com/OpenNMT/CTranslate2/blob/master/include/ctranslate2/translation.h>`_ structure in the C++ library.
              )pbdoc")
 
-        .def("score_batch", &TranslatorWrapper::score_batch,
-             py::arg("source"),
-             py::arg("target"),
-             py::kw_only(),
-             py::arg("max_batch_size")=0,
-             py::arg("batch_type")="examples",
-             py::arg("max_input_length")=1024,
-             py::arg("offset") = 0,
-             py::arg("asynchronous")=false,
-             py::call_guard<py::gil_scoped_release>(),
-             R"pbdoc(
+          .def("score_batch", &TranslatorWrapper::score_batch,
+               py::arg("source"),
+               py::arg("target"),
+               py::kw_only(),
+               py::arg("max_batch_size") = 0,
+               py::arg("batch_type") = "examples",
+               py::arg("max_input_length") = 1024,
+               py::arg("offset") = 0,
+               py::arg("asynchronous") = false,
+               py::call_guard<py::gil_scoped_release>(),
+               R"pbdoc(
                  Scores a batch of parallel tokens.
 
                  Arguments:
@@ -530,22 +543,22 @@ namespace ctranslate2 {
                    A list of scoring results.
              )pbdoc")
 
-        .def("score_file", &TranslatorWrapper::score_file,
-             py::arg("source_path"),
-             py::arg("target_path"),
-             py::arg("output_path"),
-             py::kw_only(),
-             py::arg("max_batch_size")=32,
-             py::arg("read_batch_size")=0,
-             py::arg("batch_type")="examples",
-             py::arg("max_input_length")=1024,
-             py::arg("offset")=0,
-             py::arg("with_tokens_score")=false,
-             py::arg("source_tokenize_fn")=nullptr,
-             py::arg("target_tokenize_fn")=nullptr,
-             py::arg("target_detokenize_fn")=nullptr,
-             py::call_guard<py::gil_scoped_release>(),
-             R"pbdoc(
+          .def("score_file", &TranslatorWrapper::score_file,
+               py::arg("source_path"),
+               py::arg("target_path"),
+               py::arg("output_path"),
+               py::kw_only(),
+               py::arg("max_batch_size") = 32,
+               py::arg("read_batch_size") = 0,
+               py::arg("batch_type") = "examples",
+               py::arg("max_input_length") = 1024,
+               py::arg("offset") = 0,
+               py::arg("with_tokens_score") = false,
+               py::arg("source_tokenize_fn") = nullptr,
+               py::arg("target_tokenize_fn") = nullptr,
+               py::arg("target_detokenize_fn") = nullptr,
+               py::call_guard<py::gil_scoped_release>(),
+               R"pbdoc(
                  Scores a parallel tokenized text file.
 
                  Each line in :obj:`output_path` will have the format:
@@ -578,10 +591,10 @@ namespace ctranslate2 {
                    A statistics object.
              )pbdoc")
 
-        .def("unload_model", &TranslatorWrapper::unload_model,
-             py::arg("to_cpu")=false,
-             py::call_guard<py::gil_scoped_release>(),
-             R"pbdoc(
+          .def("unload_model", &TranslatorWrapper::unload_model,
+               py::arg("to_cpu") = false,
+               py::call_guard<py::gil_scoped_release>(),
+               R"pbdoc(
                  Unloads the model attached to this translator but keep enough runtime context
                  to quickly resume translation on the initial device. The model is not guaranteed
                  to be unloaded if translations are running concurrently.
@@ -590,19 +603,18 @@ namespace ctranslate2 {
                    to_cpu: If ``True``, the model is moved to the CPU memory and not fully unloaded.
              )pbdoc")
 
-        .def("load_model", &TranslatorWrapper::load_model,
-             py::arg("keep_cache")=false,
-             py::call_guard<py::gil_scoped_release>(),
-             R"pbdoc(
+          .def("load_model", &TranslatorWrapper::load_model,
+               py::arg("keep_cache") = false,
+               py::call_guard<py::gil_scoped_release>(),
+               R"pbdoc(
                  Loads the model back to the initial device.
 
                  Arguments:
                    keep_cache: If ``True``, the model cache in the CPU memory is not deleted if it exists.
              )pbdoc")
 
-        .def_property_readonly("model_is_loaded", &TranslatorWrapper::model_is_loaded,
-                               "Whether the model is loaded on the initial device and ready to be used.")
-        ;
+          .def_property_readonly("model_is_loaded", &TranslatorWrapper::model_is_loaded,
+                                 "Whether the model is loaded on the initial device and ready to be used.");
     }
 
   }
